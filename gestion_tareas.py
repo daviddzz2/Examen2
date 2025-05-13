@@ -1,4 +1,5 @@
 import heapq
+import csv
 
 class Tarea:
     def __init__(self, nombre, prioridad, dependencias=None):
@@ -19,6 +20,28 @@ class GestorTareas:
         self.tareas = {}  # nombre -> Tarea
         self.heap = []
 
+    def guardar_csv(self, archivo="tareas_pendientes.csv"):
+        with open(archivo, "w", newline='', encoding="utf-8") as f:
+            writer = csv.writer(f)
+            writer.writerow(["nombre", "prioridad", "dependencias"])
+            for tarea in self.tareas.values():
+                if not tarea.completada:
+                    deps = ";".join(tarea.dependencias)
+                    writer.writerow([tarea.nombre, tarea.prioridad, deps])
+        print(f"Tareas pendientes guardadas en {archivo}")
+
+    def cargar_csv(self, archivo="tareas_pendientes.csv"):
+        try:
+            with open(archivo, "r", encoding="utf-8") as f:
+                reader = csv.DictReader(f)
+                for row in reader:
+                    nombre = row["nombre"]
+                    prioridad = int(row["prioridad"])
+                    dependencias = [d for d in row["dependencias"].split(";") if d]
+                    self.agregar_tarea(nombre, prioridad, dependencias)
+        except FileNotFoundError:
+            print(f"No se encontró el archivo {archivo}. Se iniciará sin tareas.")
+
     def agregar_tarea(self, nombre, prioridad, dependencias=None):
         if nombre in self.tareas:
             print("Ya existe una tarea con ese nombre.")
@@ -36,7 +59,7 @@ class GestorTareas:
         pendientes = [
             self.tareas[nombre]
             for prioridad, nombre in self.heap
-            if not self.tareas[nombre].completada and self._dependencias_completadas(nombre)
+            if not self.tareas[nombre].completada and self.dependencias_completadas(nombre)
         ]
         pendientes.sort(key=lambda t: t.prioridad)
         for tarea in pendientes:
@@ -56,13 +79,13 @@ class GestorTareas:
         while heap_copia:
             prioridad, nombre = heapq.heappop(heap_copia)
             tarea = self.tareas[nombre]
-            if not tarea.completada and self._dependencias_completadas(nombre):
+            if not tarea.completada and self.dependencias_completadas(nombre):
                 print(tarea)
                 return tarea
         print("No hay tareas disponibles.")
         return None
 
-    def _dependencias_completadas(self, nombre):
+    def dependencias_completadas(self, nombre):
         tarea = self.tareas[nombre]
         return all(self.tareas[dep].completada for dep in tarea.dependencias)
 
@@ -75,7 +98,8 @@ if __name__ == "__main__":
         print("2. Mostrar tareas pendientes")
         print("3. Marcar tarea como completada")
         print("4. Mostrar siguiente tarea de mayor prioridad")
-        print("5. Salir")
+        print("5. Guardar tareas pendientes en CSV")
+        print("6. Salir")
         opcion = input("Seleccione una opción: ")
 
         if opcion == "1":
@@ -93,7 +117,7 @@ if __name__ == "__main__":
                     prioridad = int(prioridad_str)
                     break
             deps = input("Dependencias (separadas por coma, dejar vacío si no hay): ")
-            dependencias = [d.strip() for d in deps.split(",")] if deps else []
+            dependencias = [d.strip() for d in deps.split(", ") if d.strip()] if deps else []
             gestor.agregar_tarea(nombre, prioridad, dependencias)
         elif opcion == "2":
             print("\nTareas pendientes:")
@@ -108,6 +132,8 @@ if __name__ == "__main__":
             print("\nSiguiente tarea de mayor prioridad:")
             gestor.siguiente_tarea()
         elif opcion == "5":
+            gestor.guardar_csv()
+        elif opcion == "6":
             print("Saliendo del gestor de tareas.")
             break
         else:
